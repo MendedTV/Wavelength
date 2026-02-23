@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Longueur d'Onde</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e11;
+    --surface: #18181d;
+    --border: #2a2a33;
+    --accent: #e8d5b0;
+    --accent2: #7b9e87;
+    --text: #f0ece3;
+    --muted: #666670;
+    --danger: #e07a5f;
+    --gold: #f2c14e;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+  }
+
+  /* Background texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(123,158,135,0.05) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(232,213,176,0.04) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .screen {
+    display: none;
+    width: 100%;
+    max-width: 720px;
+    padding: 2rem;
+    animation: fadeIn 0.4s ease;
+  }
+  .screen.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Typography ── */
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2.8rem, 8vw, 5rem);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--accent);
+  }
+  h1 em { font-style: italic; color: var(--accent2); }
+
+  h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.8rem;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 2.5rem;
+  }
+
+  /* ── Inputs ── */
+  label {
+    display: block;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+
+  input[type="text"], input[type="number"] {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.95rem;
+    padding: 0.75rem 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 1.2rem;
+  }
+  input:focus { border-color: var(--accent2); }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-block;
+    padding: 0.75rem 2rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+    font-weight: 500;
+  }
+  .btn-primary:hover { background: #f5e8ca; transform: translateY(-1px); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+  .btn-big {
+    width: 100%;
+    padding: 1rem;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+  }
+  .btn-danger {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid rgba(224,122,95,0.3);
+  }
+  .btn-danger:hover { background: rgba(224,122,95,0.1); }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  /* ── Players list ── */
+  #players-list { margin-bottom: 1rem; }
+  .player-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+  .player-item:last-child { border-bottom: none; }
+  .player-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent2);
+    flex-shrink: 0;
+  }
+  .player-name { flex: 1; }
+  .remove-player {
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; font-size: 1rem; line-height: 1;
+    padding: 0 4px;
+    transition: color 0.2s;
+  }
+  .remove-player:hover { color: var(--danger); }
+
+  /* ── Gauge ── */
+  .gauge-container {
+    position: relative;
+    margin: 2rem 0;
+    user-select: none;
+  }
+
+  .gauge-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+  }
+  .gauge-label-left { color: #7eb8c9; }
+  .gauge-label-right { color: #e07a5f; }
+
+  .gauge-track {
+    position: relative;
+    height: 56px;
+    border-radius: 28px;
+    background: linear-gradient(to right, #1a3d4a, #1e1e28, #4a1e1a);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    overflow: visible;
+  }
+
+  /* Secret target (only shown to clue giver) */
+  .gauge-target {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px;
+    height: 72px;
+    background: var(--gold);
+    border-radius: 2px;
+    transition: left 0.3s;
+    box-shadow: 0 0 16px rgba(242,193,78,0.6);
+    display: none;
+  }
+
+  /* Scoring zones (shown after guess) */
+  .gauge-zones {
+    position: absolute;
+    inset: 0;
+    border-radius: 28px;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.5s;
+    display: flex;
+  }
+  .zone {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.6);
+  }
+
+  /* Player cursor */
+  .gauge-cursor {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--text);
+    border: 3px solid var(--bg);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    transition: left 0.05s;
+    pointer-events: none;
+  }
+
+  .gauge-gradient-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 28px;
+    background: linear-gradient(to right,
+      rgba(126,184,201,0.15) 0%,
+      rgba(255,255,255,0.02) 50%,
+      rgba(224,122,95,0.15) 100%);
+    pointer-events: none;
+  }
+
+  /* ── Concept card ── */
+  .concept-display {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+  .concept-side {
+    flex: 1;
+    padding: 1rem 1.2rem;
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    text-align: center;
+  }
+  .concept-side.left {
+    background: rgba(126,184,201,0.08);
+    color: #7eb8c9;
+    border-right: 1px solid var(--border);
+  }
+  .concept-side.right {
+    background: rgba(224,122,95,0.08);
+    color: #e07a5f;
+  }
+  .concept-side .small { font-size: 0.65rem; font-family: 'DM Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; margin-bottom: 0.3rem; display: block; }
+
+  /* ── Scoreboard ── */
+  .score-list { list-style: none; }
+  .score-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+  .score-item:last-child { border-bottom: none; }
+  .score-pts {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.2rem;
+    color: var(--gold);
+  }
+
+  /* ── Role badge ── */
+  .role-badge {
+    display: inline-block;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .role-clue { background: rgba(242,193,78,0.15); color: var(--gold); border: 1px solid rgba(242,193,78,0.3); }
+  .role-guess { background: rgba(123,158,135,0.15); color: var(--accent2); border: 1px solid rgba(123,158,135,0.3); }
+
+  /* ── Result display ── */
+  .result-score {
+    font-family: 'DM Serif Display', serif;
+    font-size: 4rem;
+    color: var(--gold);
+    text-align: center;
+    margin: 1rem 0 0.25rem;
+  }
+  .result-label {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+
+  /* ── Divider ── */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.5rem 0;
+  }
+
+  /* ── Round info ── */
+  .round-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+  .round-info span { color: var(--text); }
+
+  /* ── Phase label ── */
+  .phase-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 0.3rem;
+  }
+
+  /* ── Clue input area ── */
+  .clue-display {
+    text-align: center;
+    padding: 1.5rem;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .clue-text {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.8rem;
+    color: var(--accent);
+    font-style: italic;
+  }
+  .clue-empty { color: var(--muted); font-size: 0.8rem; }
+
+  /* ── Hint (locked) ── */
+  .locked-overlay {
+    background: repeating-linear-gradient(
+      45deg,
+      rgba(255,255,255,0.01),
+      rgba(255,255,255,0.01) 2px,
+      transparent 2px,
+      transparent 8px
+    );
+  }
+
+  /* ── Instruction box ── */
+  .instruction {
+    background: rgba(123,158,135,0.08);
+    border: 1px solid rgba(123,158,135,0.2);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    font-size: 0.8rem;
+    color: var(--accent2);
+    margin-bottom: 1.2rem;
+    line-height: 1.6;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  /* ── Concepts library ── */
+  .concept-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin: 0.2rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .concept-badge:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ── Timer toggle ── */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  .toggle-label {
+    font-size: 0.85rem;
+    color: var(--text);
+  }
+  .toggle-label small {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+  }
+  .toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 24px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 18px; height: 18px;
+    left: 3px; top: 3px;
+    background: var(--muted);
+    border-radius: 50%;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .toggle-switch input:checked + .toggle-slider { background: rgba(123,158,135,0.3); }
+  .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); background: var(--accent2); }
+
+  .timer-duration-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  .timer-duration-row input[type=range] {
+    flex: 1;
+    margin-bottom: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    appearance: none;
+    height: 4px;
+  }
+  .timer-duration-row input[type=range]::-webkit-slider-runnable-track {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+  }
+  .timer-duration-row input[type=range]::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent2);
+    margin-top: -6px;
+    cursor: pointer;
+  }
+  .timer-duration-val {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    color: var(--accent);
+    min-width: 2.5rem;
+    text-align: right;
+  }
+  .timer-settings { display: none; margin-top: 0.75rem; }
+  .timer-settings.visible { display: block; }
+
+  /* ── Timer display in game ── */
+  .game-timer {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .game-timer.active { display: flex; }
+  .timer-bar-wrap {
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .timer-bar {
+    height: 100%;
+    background: var(--accent2);
+    border-radius: 2px;
+    transition: width 1s linear, background 0.5s;
+    width: 100%;
+  }
+  .timer-bar.warning { background: var(--gold); }
+  .timer-bar.danger  { background: var(--danger); }
+  .timer-countdown {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1rem;
+    min-width: 2rem;
+    text-align: right;
+    color: var(--accent);
+    transition: color 0.3s;
+  }
+  .timer-countdown.danger { color: var(--danger); }
+
+  /* Add player row */
+  .add-player-row {
+  .add-player-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.2rem;
+  }
+  .add-player-row input { margin-bottom: 0; flex: 1; }
+
+  /* ── Concept tabs ── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 1.2rem;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 0.6rem 1rem;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .tab-btn:first-child { border-right: 1px solid var(--border); }
+  .tab-btn.active { background: var(--accent); color: var(--bg); font-weight: 500; }
+  .tab-btn:not(.active):hover { color: var(--accent2); }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Default concepts grid */
+  .concepts-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding: 0.25rem 0;
+  }
+  .concept-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.18s;
+    user-select: none;
+    white-space: nowrap;
+    letter-spacing: 0.03em;
+  }
+  .concept-tag:hover {
+    border-color: var(--accent2);
+    color: var(--text);
+  }
+  .concept-tag.selected {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    background: rgba(123,158,135,0.15);
+    box-shadow: 0 0 0 1px rgba(123,158,135,0.3);
+  }
+  .concept-tag.selected::before { content: '✓  '; font-size: 0.65rem; }
+
+  /* Custom concepts list */
+  .custom-concept-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+  }
+  .custom-concept-item:last-child { border-bottom: none; }
+  .custom-concept-pair {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .custom-left { color: #7eb8c9; }
+  .custom-sep { color: var(--muted); font-size: 0.7rem; }
+  .custom-right { color: #e07a5f; }
+
+  .add-concept-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    margin-top: 0.75rem;
+  }
+  .add-concept-row input {
+    flex: 1;
+    margin-bottom: 0;
+    font-size: 0.85rem;
+    padding: 0.6rem 0.8rem;
+  }
+  .sep-label {
+    color: var(--muted);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .concept-source-info {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: rgba(123,158,135,0.06);
+    border-radius: 6px;
+    border: 1px solid rgba(123,158,135,0.15);
+  }
+  .concept-source-info span { color: var(--accent2); }
+
+  /* hidden */
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+     SCREEN 1 — SETUP
+════════════════════════════════════════ -->
+<div class="screen active" id="screen-setup">
+  <h1>Longueur<br><em>d'Onde</em></h1>
+  <p class="subtitle">Jeu coopératif de communication</p>
+
+  <div class="card">
+    <h2>Joueurs</h2>
+    <div id="players-list"></div>
+    <div class="add-player-row">
+      <input type="text" id="new-player-name" placeholder="Nom du joueur…" maxlength="20" />
+      <button class="btn btn-secondary" onclick="addPlayer()">+ Ajouter</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-bottom:1rem;">Concepts</h2>
+
+    <!-- Tab buttons -->
+    <div style="display:flex;gap:0.5rem;margin-bottom:1.2rem;">
+      <button id="tab-btn-default" onclick="switchTab('default')" style="flex:1;padding:0.55rem 1rem;border-radius:8px;border:1px solid var(--border);background:var(--accent);color:var(--bg);font-family:'DM Mono',monospace;font-size:0.75rem;letter-spacing:0.08em;cursor:pointer;transition:all 0.2s;font-weight:500;">Par défaut</button>
+      <button id="tab-btn-custom" onclick="switchTab('custom')" style="flex:1;padding:0.55rem 1rem;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.75rem;letter-spacing:0.08em;cursor:pointer;transition:all 0.2s;">Personnalisés</button>
+    </div>
+
+    <!-- Tab: default -->
+    <div id="tab-default">
+      <div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.75rem;letter-spacing:0.08em;text-transform:uppercase;">Cliquez pour activer / désactiver</div>
+      <div id="default-concepts-grid" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.9rem;"></div>
+      <div style="display:flex;gap:0.5rem;">
+        <button onclick="selectAllDefault()" style="padding:0.35rem 0.8rem;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.7rem;cursor:pointer;">Tout sélectionner</button>
+        <button onclick="deselectAllDefault()" style="padding:0.35rem 0.8rem;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.7rem;cursor:pointer;">Tout désélectionner</button>
+      </div>
+    </div>
+
+    <!-- Tab: custom -->
+    <div id="tab-custom" style="display:none;">
+      <div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.75rem;letter-spacing:0.08em;text-transform:uppercase;">Vos concepts personnalisés</div>
+      <div id="custom-concepts-list"></div>
+      <div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.75rem;">
+        <input type="text" id="custom-left-input" placeholder="Côté gauche" maxlength="20" style="flex:1;margin-bottom:0;" />
+        <span style="color:var(--muted);font-size:0.75rem;flex-shrink:0;">↔</span>
+        <input type="text" id="custom-right-input" placeholder="Côté droit" maxlength="20" style="flex:1;margin-bottom:0;" />
+        <button onclick="addCustomConcept()" style="padding:0.6rem 0.8rem;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.8rem;cursor:pointer;white-space:nowrap;">+ Ajouter</button>
+      </div>
+    </div>
+
+    <div id="concept-source-info" style="margin-top:0.9rem;font-size:0.7rem;color:var(--muted);padding:0.4rem 0.6rem;background:rgba(123,158,135,0.06);border-radius:6px;border:1px solid rgba(123,158,135,0.15);"></div>
+  </div>
+
+  <div class="card">
+    <label>Nombre de manches</label>
+    <input type="number" id="rounds-input" value="3" min="1" max="20" />
+    <div style="font-size:0.7rem;color:var(--muted);margin-top:-0.8rem;">Une manche = chaque joueur donne un indice une fois</div>
+  </div>
+
+  <div class="card">
+    <div class="toggle-row">
+      <div class="toggle-label">
+        Timer
+        <small>Limite de temps pour deviner</small>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="timer-toggle" onchange="onTimerToggle()" />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="timer-settings" id="timer-settings">
+      <label>Durée par manche</label>
+      <div class="timer-duration-row">
+        <input type="range" id="timer-duration" min="15" max="120" step="5" value="60" oninput="updateTimerLabel()" />
+        <div class="timer-countdown" id="timer-duration-val">60s</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary btn-big" onclick="startGame()">Commencer la partie →</button>
+  <p style="color:var(--muted);font-size:0.7rem;margin-top:0.75rem;text-align:center;">Minimum 2 joueurs requis</p>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCREEN 2 — CLUE GIVER (private)
+════════════════════════════════════════ -->
+<div class="screen" id="screen-clue">
+  <div class="round-info">
+    MANCHE <span id="clue-round"></span> / <span id="clue-total"></span>
+    &nbsp;·&nbsp; Tour <span id="clue-turn"></span>
+    &nbsp;·&nbsp; Score <span id="clue-score"></span> pts
+  </div>
+
+  <div class="role-badge role-clue">🎯 Donneur d'indice</div>
+  <h2 id="clue-player-name" style="margin-bottom:1.5rem;"></h2>
+
+  <div class="instruction">
+    Vous seul voyez la cible sur la jauge. Donnez <strong>un seul mot ou concept</strong> à vos coéquipiers pour qu'ils devinent sa position.
+  </div>
+
+  <div class="concept-display">
+    <div class="concept-side left">
+      <span class="small">extrême gauche</span>
+      <span id="clue-left"></span>
+    </div>
+    <div class="concept-side right">
+      <span class="small">extrême droite</span>
+      <span id="clue-right"></span>
+    </div>
+  </div>
+
+  <div class="gauge-container" id="gauge-clue-container">
+    <div class="gauge-labels">
+      <span class="gauge-label-left" id="clue-label-left"></span>
+      <span class="gauge-label-right" id="clue-label-right"></span>
+    </div>
+    <div class="gauge-track" id="gauge-clue-track">
+      <div class="gauge-gradient-overlay"></div>
+      <div class="gauge-target" id="gauge-target"></div>
+    </div>
+  </div>
+
+  <label>Votre indice</label>
+  <div class="add-player-row">
+    <input type="text" id="clue-input" placeholder="Un mot, une idée…" maxlength="40" />
+    <button class="btn btn-primary" onclick="submitClue()">Valider →</button>
+  </div>
+
+  <hr class="divider">
+  <p style="color:var(--muted);font-size:0.75rem;">Passez l'écran aux autres joueurs une fois l'indice donné.</p>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCREEN 3 — GUESSING
+════════════════════════════════════════ -->
+<div class="screen" id="screen-guess">
+  <div class="round-info">
+    MANCHE <span id="guess-round"></span> / <span id="guess-total"></span>
+    &nbsp;·&nbsp; Tour <span id="guess-turn"></span>
+    &nbsp;·&nbsp; Score <span id="guess-score"></span> pts
+  </div>
+
+  <div class="game-timer" id="guess-timer">
+    <span class="timer-countdown" id="timer-countdown">60</span>
+    <div class="timer-bar-wrap">
+      <div class="timer-bar" id="timer-bar"></div>
+    </div>
+  </div>
+
+  <div class="role-badge role-guess">🎲 Responsable du curseur</div>
+  <div style="margin-bottom:0.4rem;font-size:0.9rem;">Indice de <strong id="guess-clue-giver"></strong> :</div>
+  <div style="margin-bottom:1rem;font-size:0.8rem;color:var(--muted);">
+    Curseur confié à <strong id="guess-cursor-player" style="color:var(--gold);"></strong> — les autres discutent, lui décide !
+  </div>
+
+  <div class="clue-display">
+    <div class="clue-text" id="guess-clue-text"></div>
+  </div>
+
+  <div class="concept-display">
+    <div class="concept-side left">
+      <span class="small">extrême gauche</span>
+      <span id="guess-left"></span>
+    </div>
+    <div class="concept-side right">
+      <span class="small">extrême droite</span>
+      <span id="guess-right"></span>
+    </div>
+  </div>
+
+  <div class="instruction">
+    Discutez ensemble pour guider <strong id="guess-cursor-player-instr" style="color:var(--gold);"></strong>, qui seul peut déplacer le curseur. Cliquez ou faites glisser sur la jauge.
+  </div>
+
+  <div class="gauge-container" id="gauge-guess-container">
+    <div class="gauge-labels">
+      <span class="gauge-label-left" id="guess-label-left"></span>
+      <span class="gauge-label-right" id="guess-label-right"></span>
+    </div>
+    <div class="gauge-track" id="gauge-guess-track" 
+         onmousedown="startDrag(event)" 
+         ontouchstart="startDragTouch(event)">
+      <div class="gauge-gradient-overlay"></div>
+      <div class="gauge-zones" id="gauge-zones"></div>
+      <div class="gauge-cursor" id="gauge-cursor" style="left:50%;"></div>
+    </div>
+  </div>
+
+  <div style="text-align:center;color:var(--muted);font-size:0.75rem;margin-bottom:1.2rem;" id="cursor-pos-label">Position : 50%</div>
+
+  <button class="btn btn-primary btn-big" onclick="submitGuess()">Révéler le résultat →</button>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCREEN 4 — RESULT
+════════════════════════════════════════ -->
+<div class="screen" id="screen-result">
+  <div class="round-info">
+    MANCHE <span id="result-round"></span> / <span id="result-total"></span>
+    &nbsp;·&nbsp; Tour <span id="result-turn"></span>
+  </div>
+
+  <h2>Résultat</h2>
+
+  <div class="gauge-container">
+    <div class="gauge-labels">
+      <span class="gauge-label-left" id="result-label-left"></span>
+      <span class="gauge-label-right" id="result-label-right"></span>
+    </div>
+    <div class="gauge-track" id="gauge-result-track" style="cursor:default;">
+      <div class="gauge-gradient-overlay"></div>
+      <div class="gauge-zones" id="result-zones" style="opacity:1;"></div>
+      <div class="gauge-target" id="result-target" style="display:block;"></div>
+      <div class="gauge-cursor" id="result-cursor"></div>
+    </div>
+  </div>
+
+  <div class="result-score" id="result-pts"></div>
+  <div class="result-label" id="result-label"></div>
+
+  <div class="card">
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem;letter-spacing:0.08em;text-transform:uppercase;">Indice donné</div>
+    <div style="font-family:'DM Serif Display',serif;font-size:1.4rem;color:var(--accent);font-style:italic;" id="result-clue"></div>
+    <div style="font-size:0.75rem;color:var(--muted);margin-top:0.3rem;">par <span id="result-clue-giver" style="color:var(--text);"></span></div>
+    <div style="font-size:0.75rem;color:var(--muted);margin-top:0.2rem;">curseur : <span id="result-cursor-player" style="color:var(--gold);"></span></div>
+  </div>
+
+  <div class="card">
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.75rem;letter-spacing:0.08em;text-transform:uppercase;">Score total</div>
+    <ul class="score-list" id="result-score-list"></ul>
+    <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.85rem;">
+      <span style="color:var(--muted);">Total équipe</span>
+      <span class="score-pts" id="result-total-pts"></span>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" style="flex:1;" onclick="nextRound()" id="btn-next-round">Manche suivante →</button>
+    <button class="btn btn-danger" onclick="endGame()">Fin de partie</button>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCREEN 5 — END
+════════════════════════════════════════ -->
+<div class="screen" id="screen-end">
+  <h1>Fin de<br><em>Partie</em></h1>
+  <p class="subtitle" style="margin-bottom:2rem;">Bravo à tous !</p>
+
+  <div class="card">
+    <h2 style="margin-bottom:1rem;">Score final</h2>
+    <ul class="score-list" id="end-score-list"></ul>
+    <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.9rem;">
+      <span style="color:var(--muted);">Total équipe</span>
+      <span class="score-pts" id="end-total-pts"></span>
+    </div>
+  </div>
+
+  <div class="card" id="end-verdict">
+    <div class="phase-label">Verdict</div>
+    <div id="end-verdict-text" style="font-family:'DM Serif Display',serif;font-size:1.3rem;color:var(--accent);margin-top:0.25rem;"></div>
+  </div>
+
+  <button class="btn btn-primary btn-big" onclick="resetGame()">Nouvelle partie →</button>
+</div>
+
+
+<script>
+// ═══════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════
+
+const CONCEPTS = [
+  ["Chaud","Froid"], ["Rapide","Lent"], ["Grand","Petit"],
+  ["Cher","Bon marché"], ["Bruyant","Silencieux"], ["Ancien","Moderne"],
+  ["Facile","Difficile"], ["Rare","Commun"], ["Dangereux","Sûr"],
+  ["Sérieux","Drôle"], ["Populaire","Obscur"], ["Léger","Lourd"],
+  ["Optimiste","Pessimiste"], ["Doux","Épicé"], ["Naturel","Artificiel"],
+  ["Urbain","Rural"], ["Luxueux","Basique"], ["Réel","Fictif"],
+  ["Fort","Faible"], ["Clair","Sombre"], ["Proche","Lointain"],
+  ["Vivant","Sans vie"], ["Élégant","Vulgaire"], ["Logique","Émotionnel"],
+  ["Chaotique","Ordonné"], ["Courageux","Peureux"], ["Célèbre","Inconnu"],
+];
+
+// Scoring zones (from center outward): 4, 3, 2, 1
+// Zone widths (% of gauge): center 20%, then 15% each side, 10% each, rest = 0
+// Positions in % from 0 to 100
+// Zone: 0-10 = 0pts, 10-20 = 1pt, 20-30 = 2pts, 30-40 = 3pts, 40-60 = 4pts, 60-70 = 3pts, 70-80 = 2pts, 80-90 = 1pt, 90-100 = 0pts
+const ZONES = [
+  { from: 0,  to: 10, pts: 0, color: 'rgba(0,0,0,0)',                label: '' },
+  { from: 10, to: 20, pts: 1, color: 'rgba(224,122,95,0.1)',         label: '1' },
+  { from: 20, to: 30, pts: 2, color: 'rgba(224,122,95,0.18)',        label: '2' },
+  { from: 30, to: 40, pts: 3, color: 'rgba(242,193,78,0.18)',        label: '3' },
+  { from: 40, to: 60, pts: 4, color: 'rgba(123,158,135,0.25)',       label: '4' },
+  { from: 60, to: 70, pts: 3, color: 'rgba(242,193,78,0.18)',        label: '3' },
+  { from: 70, to: 80, pts: 2, color: 'rgba(224,122,95,0.18)',        label: '2' },
+  { from: 80, to: 90, pts: 1, color: 'rgba(224,122,95,0.1)',         label: '1' },
+  { from: 90, to: 100,pts: 0, color: 'rgba(0,0,0,0)',               label: '' },
+];
+
+function getZoneScore(target, guess) {
+  // distance
+  const dist = Math.abs(target - guess);
+  for (let z of ZONES) {
+    if (dist >= z.from && dist < z.to) return z.pts;
+  }
+  return 0;
+}
+
+function buildZonesHTML(targetPct) {
+  return ZONES.map(z => {
+    const w = z.to - z.from;
+    return `<div class="zone" style="width:${w}%;background:${z.color};">${z.label ? z.label+'pts' : ''}</div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// TIMER
+// ═══════════════════════════════════════
+
+let timerInterval = null;
+let timerEnabled = false;
+let timerDuration = 60;
+
+function onTimerToggle() {
+  timerEnabled = document.getElementById('timer-toggle').checked;
+  const settings = document.getElementById('timer-settings');
+  settings.classList.toggle('visible', timerEnabled);
+}
+
+function updateTimerLabel() {
+  timerDuration = parseInt(document.getElementById('timer-duration').value);
+  document.getElementById('timer-duration-val').textContent = timerDuration + 's';
+}
+
+function startTimer() {
+  clearTimer();
+  if (!timerEnabled) {
+    document.getElementById('guess-timer').classList.remove('active');
+    return;
+  }
+
+  const el = document.getElementById('guess-timer');
+  const countdown = document.getElementById('timer-countdown');
+  const bar = document.getElementById('timer-bar');
+  el.classList.add('active');
+
+  let remaining = timerDuration;
+  countdown.textContent = remaining;
+  countdown.classList.remove('danger');
+  bar.style.width = '100%';
+  bar.classList.remove('warning', 'danger');
+
+  timerInterval = setInterval(() => {
+    remaining--;
+    countdown.textContent = remaining;
+    const pct = (remaining / timerDuration) * 100;
+    bar.style.width = pct + '%';
+
+    if (remaining <= timerDuration * 0.25) {
+      bar.classList.add('danger');
+      bar.classList.remove('warning');
+      countdown.classList.add('danger');
+    } else if (remaining <= timerDuration * 0.5) {
+      bar.classList.add('warning');
+      countdown.classList.remove('danger');
+    }
+
+    if (remaining <= 0) {
+      clearTimer();
+      // Auto-submit when time runs out
+      submitGuess();
+    }
+  }, 1000);
+}
+
+function clearTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}
+
+// ═══════════════════════════════════════
+// CONCEPT MANAGEMENT
+// ═══════════════════════════════════════
+
+// Which default concepts are selected (all by default)
+let selectedDefaultIndices = new Set(CONCEPTS.map((_, i) => i));
+let customConcepts = []; // array of [left, right]
+let activeTab = 'default';
+
+function switchTab(tab) {
+  activeTab = tab;
+  const isDefault = tab === 'default';
+
+  // Panels
+  document.getElementById('tab-default').style.display = isDefault ? 'block' : 'none';
+  document.getElementById('tab-custom').style.display  = isDefault ? 'none'  : 'block';
+
+  // Buttons
+  const btnD = document.getElementById('tab-btn-default');
+  const btnC = document.getElementById('tab-btn-custom');
+  if (isDefault) {
+    btnD.style.background = 'var(--accent)'; btnD.style.color = 'var(--bg)'; btnD.style.fontWeight = '500';
+    btnC.style.background = 'transparent';   btnC.style.color = 'var(--muted)'; btnC.style.fontWeight = '';
+  } else {
+    btnC.style.background = 'var(--accent)'; btnC.style.color = 'var(--bg)'; btnC.style.fontWeight = '500';
+    btnD.style.background = 'transparent';   btnD.style.color = 'var(--muted)'; btnD.style.fontWeight = '';
+  }
+}
+
+function renderDefaultConcepts() {
+  const grid = document.getElementById('default-concepts-grid');
+  grid.innerHTML = CONCEPTS.map((c, i) => {
+    const sel = selectedDefaultIndices.has(i);
+    const base = `padding:0.35rem 0.9rem;border-radius:999px;font-size:0.72rem;font-family:'DM Mono',monospace;cursor:pointer;user-select:none;white-space:nowrap;transition:all 0.15s;display:inline-block;`;
+    const on  = `border:1px solid var(--accent2);background:rgba(123,158,135,0.18);color:#7b9e87;box-shadow:0 0 0 1px rgba(123,158,135,0.25);`;
+    const off = `border:1px solid #2a2a33;background:#18181d;color:#666670;`;
+    return `<span style="${base}${sel ? on : off}" onclick="toggleDefault(${i})">${sel ? '✓ ' : ''}${c[0]} / ${c[1]}</span>`;
+  }).join('');
+  updateConceptInfo();
+}
+
+function toggleDefault(i) {
+  if (selectedDefaultIndices.has(i)) selectedDefaultIndices.delete(i);
+  else selectedDefaultIndices.add(i);
+  renderDefaultConcepts();
+}
+
+function selectAllDefault() {
+  CONCEPTS.forEach((_, i) => selectedDefaultIndices.add(i));
+  renderDefaultConcepts();
+}
+
+function deselectAllDefault() {
+  selectedDefaultIndices.clear();
+  renderDefaultConcepts();
+}
+
+function renderCustomConcepts() {
+  const list = document.getElementById('custom-concepts-list');
+  if (customConcepts.length === 0) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:0.5rem 0 0.75rem;">Aucun concept personnalisé.</div>';
+  } else {
+    list.innerHTML = customConcepts.map((c, i) => `
+      <div class="custom-concept-item">
+        <div class="custom-concept-pair">
+          <span class="custom-left">${c[0]}</span>
+          <span class="custom-sep">↔</span>
+          <span class="custom-right">${c[1]}</span>
+        </div>
+        <button class="remove-player" onclick="removeCustomConcept(${i})">×</button>
+      </div>
+    `).join('');
+  }
+  updateConceptInfo();
+}
+
+function addCustomConcept() {
+  const left = document.getElementById('custom-left-input').value.trim();
+  const right = document.getElementById('custom-right-input').value.trim();
+  if (!left || !right) { alert('Remplissez les deux côtés !'); return; }
+  customConcepts.push([left, right]);
+  document.getElementById('custom-left-input').value = '';
+  document.getElementById('custom-right-input').value = '';
+  renderCustomConcepts();
+  document.getElementById('custom-left-input').focus();
+}
+
+function removeCustomConcept(i) {
+  customConcepts.splice(i, 1);
+  renderCustomConcepts();
+}
+
+function getActiveConcepts() {
+  const defaults = [...selectedDefaultIndices].map(i => CONCEPTS[i]);
+  return [...defaults, ...customConcepts];
+}
+
+function updateConceptInfo() {
+  const total = getActiveConcepts().length;
+  const info = document.getElementById('concept-source-info');
+  const defaultCount = selectedDefaultIndices.size;
+  const customCount = customConcepts.length;
+  if (total === 0) {
+    info.innerHTML = '⚠ Aucun concept sélectionné — ajoutez-en ou activez des concepts par défaut.';
+    info.style.color = 'var(--danger)';
+  } else {
+    const parts = [];
+    if (defaultCount > 0) parts.push(`<span>${defaultCount} concepts par défaut</span>`);
+    if (customCount > 0) parts.push(`<span>${customCount} personnalisé${customCount > 1 ? 's' : ''}</span>`);
+    info.innerHTML = `Concepts actifs : ${parts.join(' + ')} = <span>${total} au total</span>`;
+    info.style.color = '';
+  }
+}
+
+// Initialize concept UI
+renderDefaultConcepts();
+renderCustomConcepts();
+
+// Enter key for custom concept inputs
+document.getElementById('custom-right-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addCustomConcept();
+});
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+
+let state = {
+  players: [],
+  totalRounds: 6,
+  currentRound: 0,
+  clueGiverIndex: 0,
+  scores: {},       // name -> pts
+  currentTarget: 50,
+  currentGuess: 50,
+  currentConcept: null,
+  currentClue: '',
+};
+
+// ═══════════════════════════════════════
+// SETUP
+// ═══════════════════════════════════════
+
+function renderPlayerList() {
+  const list = document.getElementById('players-list');
+  if (state.players.length === 0) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:0.5rem 0;">Aucun joueur ajouté.</div>';
+    return;
+  }
+  list.innerHTML = state.players.map((p, i) => `
+    <div class="player-item">
+      <div class="player-dot"></div>
+      <div class="player-name">${p}</div>
+      <button class="remove-player" onclick="removePlayer(${i})">×</button>
+    </div>
+  `).join('');
+}
+
+function addPlayer() {
+  const input = document.getElementById('new-player-name');
+  const name = input.value.trim();
+  if (!name) return;
+  if (state.players.includes(name)) { input.value = ''; return; }
+  state.players.push(name);
+  input.value = '';
+  renderPlayerList();
+  input.focus();
+}
+
+function removePlayer(i) {
+  state.players.splice(i, 1);
+  renderPlayerList();
+}
+
+document.getElementById('new-player-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addPlayer();
+});
+
+renderPlayerList();
+
+// ═══════════════════════════════════════
+// GAME START
+// ═══════════════════════════════════════
+
+function startGame() {
+  if (state.players.length < 2) {
+    alert('Ajoutez au moins 2 joueurs !');
+    return;
+  }
+  if (getActiveConcepts().length === 0) {
+    alert('Ajoutez au moins un concept !');
+    return;
+  }
+  state.totalRounds = parseInt(document.getElementById('rounds-input').value) || 6;
+  state.currentRound = 1;
+  state.scores = {};
+  state.players.forEach(p => state.scores[p] = 0);
+  // Pick a random starting player
+  state.clueGiverIndex = Math.floor(Math.random() * state.players.length);
+  state.roundStartIndex = state.clueGiverIndex; // remember who started the round
+  state.turnInRound = 0; // how many turns played in current round
+  // Read timer settings
+  timerEnabled = document.getElementById('timer-toggle').checked;
+  timerDuration = parseInt(document.getElementById('timer-duration').value) || 60;
+  // Shuffle active concepts for the session
+  state.sessionConcepts = shuffleArray([...getActiveConcepts()]);
+  state.conceptIndex = 0;
+  startRound();
+}
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function startRound() {
+  // currentRound is managed by startGame (=1) and nextRound (increments when full round done)
+  // Pick next concept (cycle if exhausted)
+  if (state.conceptIndex >= state.sessionConcepts.length) {
+    state.sessionConcepts = shuffleArray([...getActiveConcepts()]);
+    state.conceptIndex = 0;
+  }
+  state.currentConcept = state.sessionConcepts[state.conceptIndex++];
+  // Pick random target (10–90 to avoid edges)
+  state.currentTarget = 10 + Math.random() * 80;
+  state.currentGuess = 50;
+  state.currentClue = '';
+  // Cursor player = next player after clue giver in rotation
+  state.cursorPlayerIndex = (state.clueGiverIndex + 1) % state.players.length;
+  state.turnInRound = (state.turnInRound || 0);
+
+  showScreen('screen-clue');
+
+  const clueGiver = state.players[state.clueGiverIndex];
+  document.getElementById('clue-player-name').textContent = clueGiver;
+  document.getElementById('clue-round').textContent = state.currentRound;
+  document.getElementById('clue-total').textContent = state.totalRounds;
+  document.getElementById('clue-turn').textContent = (state.turnInRound + 1) + '/' + state.players.length;
+  document.getElementById('clue-score').textContent = totalScore();
+  document.getElementById('clue-left').textContent = state.currentConcept[0];
+  document.getElementById('clue-right').textContent = state.currentConcept[1];
+  document.getElementById('clue-label-left').textContent = state.currentConcept[0];
+  document.getElementById('clue-label-right').textContent = state.currentConcept[1];
+  document.getElementById('clue-input').value = '';
+
+  // Show target on gauge
+  const target = document.getElementById('gauge-target');
+  target.style.display = 'block';
+  target.style.left = state.currentTarget + '%';
+}
+
+function submitClue() {
+  const clue = document.getElementById('clue-input').value.trim();
+  if (!clue) { alert('Donnez un indice !'); return; }
+  state.currentClue = clue;
+
+  // Show guess screen
+  const clueGiver = state.players[state.clueGiverIndex];
+  document.getElementById('guess-round').textContent = state.currentRound;
+  document.getElementById('guess-total').textContent = state.totalRounds;
+  document.getElementById('guess-turn').textContent = (state.turnInRound + 1) + '/' + state.players.length;
+  document.getElementById('guess-score').textContent = totalScore();
+  document.getElementById('guess-clue-giver').textContent = clueGiver;
+  document.getElementById('guess-cursor-player').textContent = state.players[state.cursorPlayerIndex];
+  document.getElementById('guess-cursor-player-instr').textContent = state.players[state.cursorPlayerIndex];
+  document.getElementById('guess-clue-text').textContent = clue;
+  document.getElementById('guess-left').textContent = state.currentConcept[0];
+  document.getElementById('guess-right').textContent = state.currentConcept[1];
+  document.getElementById('guess-label-left').textContent = state.currentConcept[0];
+  document.getElementById('guess-label-right').textContent = state.currentConcept[1];
+
+  // Reset cursor
+  state.currentGuess = 50;
+  updateCursor(50);
+
+  showScreen('screen-guess');
+  startTimer();
+}
+
+// ═══════════════════════════════════════
+// GAUGE INTERACTION
+// ═══════════════════════════════════════
+
+let isDragging = false;
+
+function getPctFromEvent(e, track) {
+  const rect = track.getBoundingClientRect();
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+  return Math.max(0, Math.min(100, (x / rect.width) * 100));
+}
+
+function updateCursor(pct) {
+  state.currentGuess = pct;
+  document.getElementById('gauge-cursor').style.left = pct + '%';
+  document.getElementById('cursor-pos-label').textContent = 
+    `Position : ${Math.round(pct)}% — tendance ${pct < 50 ? state.currentConcept[0] : state.currentConcept[1]}`;
+}
+
+function startDrag(e) {
+  isDragging = true;
+  const track = document.getElementById('gauge-guess-track');
+  updateCursor(getPctFromEvent(e, track));
+  
+  const onMove = ev => { if (isDragging) updateCursor(getPctFromEvent(ev, track)); };
+  const onUp   = ()  => { isDragging = false; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+function startDragTouch(e) {
+  const track = document.getElementById('gauge-guess-track');
+  updateCursor(getPctFromEvent(e, track));
+  
+  const onMove = ev => { ev.preventDefault(); updateCursor(getPctFromEvent(ev, track)); };
+  const onEnd  = ()  => { track.removeEventListener('touchmove', onMove); track.removeEventListener('touchend', onEnd); };
+  track.addEventListener('touchmove', onMove, { passive: false });
+  track.addEventListener('touchend', onEnd);
+}
+
+// ═══════════════════════════════════════
+// SUBMIT GUESS & RESULT
+// ═══════════════════════════════════════
+
+function submitGuess() {
+  clearTimer();
+  const pts = computeScore(state.currentTarget, state.currentGuess);
+  
+  // Add pts to all players except clue giver
+  state.players.forEach((p, i) => {
+    state.scores[p] = (state.scores[p] || 0) + pts;
+  });
+
+  showResult(pts);
+}
+
+function computeScore(target, guess) {
+  const dist = Math.abs(target - guess);
+  if (dist < 10) return 4;
+  if (dist < 20) return 3;
+  if (dist < 30) return 2;
+  if (dist < 40) return 1;
+  return 0;
+}
+
+function showResult(pts) {
+  document.getElementById('result-round').textContent = state.currentRound;
+  document.getElementById('result-total').textContent = state.totalRounds;
+  document.getElementById('result-turn').textContent = (state.turnInRound + 1) + '/' + state.players.length;
+  document.getElementById('result-clue').textContent = state.currentClue;
+  document.getElementById('result-clue-giver').textContent = state.players[state.clueGiverIndex];
+  document.getElementById('result-cursor-player').textContent = state.players[state.cursorPlayerIndex];
+
+  // Build gauge
+  const track = document.getElementById('gauge-result-track');
+  document.getElementById('result-zones').innerHTML = ZONES.map(z => {
+    const w = z.to - z.from;
+    return `<div class="zone" style="width:${w}%;background:${z.color};">${z.label ? z.label : ''}</div>`;
+  }).join('');
+  document.getElementById('result-target').style.left = state.currentTarget + '%';
+  document.getElementById('result-cursor').style.left = state.currentGuess + '%';
+  document.getElementById('result-label-left').textContent = state.currentConcept[0];
+  document.getElementById('result-label-right').textContent = state.currentConcept[1];
+
+  // Score display
+  document.getElementById('result-pts').textContent = '+' + pts;
+  const labels = ['Raté !', 'Proche…', 'Bien !', 'Très bien !', 'Parfait ! 🎯'];
+  document.getElementById('result-label').textContent = labels[pts] || '';
+
+  // Score list
+  document.getElementById('result-score-list').innerHTML = state.players.map(p => `
+    <li class="score-item">
+      <span>${p}</span>
+      <span class="score-pts">${state.scores[p]} pts</span>
+    </li>
+  `).join('');
+  document.getElementById('result-total-pts').textContent = totalScore() + ' pts';
+
+  // Next round button
+  const isLast = state.currentRound >= state.totalRounds && state.turnInRound + 1 >= state.players.length;
+  const btnNext = document.getElementById('btn-next-round');
+  const isLastTurnInRound = state.turnInRound + 1 >= state.players.length;
+  if (isLast) btnNext.textContent = 'Voir le bilan final →';
+  else if (isLastTurnInRound) btnNext.textContent = 'Manche suivante →';
+  else btnNext.textContent = 'Tour suivant →';
+  btnNext.onclick = isLast ? endGame : nextRound;
+
+  showScreen('screen-result');
+}
+
+function nextRound() {
+  state.turnInRound++;
+  state.clueGiverIndex = (state.clueGiverIndex + 1) % state.players.length;
+
+  // If everyone has played as clue giver in this round, start a new round
+  if (state.turnInRound >= state.players.length) {
+    state.currentRound++; // increment here instead of in startRound
+    state.turnInRound = 0;
+  }
+  startRound();
+}
+
+function endGame() {
+  document.getElementById('end-score-list').innerHTML = state.players
+    .slice().sort((a,b) => state.scores[b] - state.scores[a])
+    .map(p => `
+      <li class="score-item">
+        <span>${p}</span>
+        <span class="score-pts">${state.scores[p]} pts</span>
+      </li>
+    `).join('');
+  
+  const total = totalScore();
+  const maxPossible = state.totalRounds * state.players.length * 4;
+  const ratio = total / maxPossible;
+
+  document.getElementById('end-total-pts').textContent = total + ' pts';
+
+  let verdict;
+  if (ratio >= 0.9) verdict = "Extraordinaire ! Vous pensez à l'unisson.";
+  else if (ratio >= 0.7) verdict = "Excellent travail d'équipe !";
+  else if (ratio >= 0.5) verdict = "Pas mal, continuez à vous calibrer !";
+  else if (ratio >= 0.3) verdict = "Vous commencez à vous comprendre…";
+  else verdict = "La communication, ça s'apprend !";
+
+  document.getElementById('end-verdict-text').textContent = verdict;
+
+  showScreen('screen-end');
+}
+
+function resetGame() {
+  state = {
+    players: [...state.players],
+    totalRounds: state.totalRounds,
+    currentRound: 0,
+    clueGiverIndex: 0,
+    scores: {},
+    currentTarget: 50,
+    currentGuess: 50,
+    currentConcept: null,
+    currentClue: '',
+    sessionConcepts: [],
+    conceptIndex: 0,
+    cursorPlayerIndex: -1,
+    turnInRound: 0,
+    roundStartIndex: 0,
+  };
+  state.players.forEach(p => state.scores[p] = 0);
+  renderPlayerList();
+  renderDefaultConcepts();
+  renderCustomConcepts();
+  showScreen('screen-setup');
+}
+
+// ═══════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════
+
+function totalScore() {
+  return Object.values(state.scores).reduce((a,b) => a+b, 0);
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+</script>
+</body>
+</html>
